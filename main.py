@@ -6,6 +6,23 @@ from datetime import time
 # 1. Initialize the FastAPI app
 app = FastAPI()
 
+
+class Field(BaseModel):
+    field_id: int
+    field_name: str
+    opening_time: time
+    closing_time: time
+
+class Reservation(BaseModel):
+    reservation_id: str
+    field_id: int
+    user_id: str
+    start_time: time
+
+class User(BaseModel):
+    user_id: str
+    email: str
+
 # 2. Connect to Supabase
 # You will find these two links in your Supabase Dashboard under Project Settings -> API
 SUPABASE_URL = "https://ahlqaydotuczkfkgmqlu.supabase.co"
@@ -19,8 +36,7 @@ def read_root():
     return {"message": "Welcome to the SporTime API!"}
 
 # 4. Create an endpoint to fetch your sports fields
-@app.get("/fields")
+@app.get("/fields", response_model=list[Field])
 def get_fields():
-    # This tells Supabase to grab every row from the 'fields' table
     response = supabase.table("fields").select("*").execute()
     return response.data
