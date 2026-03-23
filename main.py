@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from realtime import Optional
 from supabase import create_client, Client
 from pydantic import BaseModel
 from datetime import time
@@ -14,7 +15,7 @@ class Field(BaseModel):
     closing_time: time
 
 class Reservation(BaseModel):
-    reservation_id: str
+    reservation_id: Optional[int] = None
     field_id: int
     user_id: str
     start_time: time
@@ -40,3 +41,37 @@ def read_root():
 def get_fields():
     response = supabase.table("fields").select("*").execute()
     return response.data
+
+@app.get("/users", response_model=list[User])
+def get_users():
+    response = supabase.table("users").select("*").execute()
+    return response.data
+
+@app.post("/users", response_model=User)
+def create_user(user: User):
+    response = supabase.table("users").insert(user.dict()).execute()
+    return response.data[0]
+
+
+# 5. Create an endpoint to fetch reservations for a specific field
+@app.get("/fields/{field_id}/reservations", response_model=list[Reservation])
+def get_field_reservations(field_id: int):
+    response = supabase.table("reservations").select("*").eq("field_id", field_id).execute()
+    return response.data
+
+# 6. endpoint to fetch user reservations
+@app.get("/users/{user_id}/reservations", response_model=list[Reservation])
+def get_user_reservations(user_id: str):
+    response = supabase.table("reservations").select("*").eq("user_id", user_id).execute()
+    return response.data
+
+# 7. Create an endpoint to create a new reservation
+@app.post("/reservations", response_model=Reservation)
+def create_reservation(reservation: Reservation):
+    # exclude_none=True removes the empty reservation_id from the dictionary
+    # This forces Supabase to use its auto-generating SERIAL feature!
+    data_to_insert = reservation.dict(exclude_none=True) 
+    
+    response = supabase.table("reservations").insert(data_to_insert).execute()
+    
+    return response.data[0]
