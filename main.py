@@ -1,8 +1,8 @@
 from fastapi import FastAPI
-from realtime import Optional
+from typing import Optional
 from supabase import create_client, Client
 from pydantic import BaseModel
-from datetime import time
+from datetime import datetime, time
 
 # 1. Initialize the FastAPI app
 app = FastAPI()
@@ -17,9 +17,10 @@ class Field(BaseModel):
 class Reservation(BaseModel):
     reservation_id: Optional[int] = None
     field_id: int
+    field_name: Optional[str] = None  # add this
     user_id: str
-    start_time: time
-
+    starting_time: datetime
+    
 class User(BaseModel):
     user_id: str
     email: str
@@ -62,16 +63,33 @@ def get_field_reservations(field_id: int):
 # 6. endpoint to fetch user reservations
 @app.get("/users/{user_id}/reservations", response_model=list[Reservation])
 def get_user_reservations(user_id: str):
-    response = supabase.table("reservations").select("*").eq("user_id", user_id).execute()
+    response = supabase.table("reservations")\
+        .select("*, fields(field_name)")\
+        .eq("user_id", user_id)\
+        .execute()
+    
+    # Flatten the nested field_name into the reservation object
+    for r in response.data:
+        if r.get("fields"):
+            r["field_name"] = r["fields"]["field_name"]
+        del r["fields"]
+    
     return response.data
 
 # 7. Create an endpoint to create a new reservation
 @app.post("/reservations", response_model=Reservation)
 def create_reservation(reservation: Reservation):
-    # exclude_none=True removes the empty reservation_id from the dictionary
-    # This forces Supabase to use its auto-generating SERIAL feature!
-    data_to_insert = reservation.dict(exclude_none=True) 
+    data_to_insert = reservation.dict(exclude_none=True)
+    
+    # Convert datetime to ISO string so it can be serialized to JSON
+    if "starting_time" in data_to_insert:
+        data_to_insert["starting_time"] = data_to_insert["starting_time"].isoformat()
     
     response = supabase.table("reservations").insert(data_to_insert).execute()
-    
+    return response.data[0]
+
+# 8. Create an endpoint to delete a reservation
+@app.delete("/reservations/{reservation_id}")
+def delete_reservation(reservation_id: int):
+    response = supabase.table("reservations").delete().eq("reservation_id", reservation_id).execute()
     return response.data[0]
