@@ -20,7 +20,7 @@ class Reservation(BaseModel):
     field_name: Optional[str] = None  # add this
     user_id: str
     starting_time: datetime
-    
+
 class User(BaseModel):
     user_id: str
     email: str
@@ -52,6 +52,12 @@ def get_users():
 def create_user(user: User):
     response = supabase.table("users").insert(user.dict()).execute()
     return response.data[0]
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: str):
+    supabase.table("reservations").delete().eq("user_id", user_id).execute()
+    response = supabase.table("users").delete().eq("user_id", user_id).execute()
+    return {"message": "User deleted"}
 
 
 # 5. Create an endpoint to fetch reservations for a specific field
