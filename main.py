@@ -3,6 +3,11 @@ from typing import Optional
 from supabase import create_client, Client
 from pydantic import BaseModel
 from datetime import datetime, time
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # 1. Initialize the FastAPI app
 app = FastAPI()
@@ -27,8 +32,8 @@ class User(BaseModel):
 
 # 2. Connect to Supabase
 # You will find these two links in your Supabase Dashboard under Project Settings -> API
-SUPABASE_URL = "https://ahlqaydotuczkfkgmqlu.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFobHFheWRvdHVjemtma2dtcWx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4MjY0NzEsImV4cCI6MjA4OTQwMjQ3MX0.WszisAw2nCFHZMcC7fSiAhaxIZrvOH0Uolw75Nu6C4U"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
