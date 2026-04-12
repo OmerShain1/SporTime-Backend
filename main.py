@@ -88,14 +88,23 @@ def get_user_reservations(user_id: str):
     return response.data
 
 # 7. Create an endpoint to create a new reservation
+from fastapi import FastAPI, HTTPException
+
 @app.post("/reservations", response_model=Reservation)
 def create_reservation(reservation: Reservation):
+    # Count active reservations for this user
+    count_response = supabase.table("reservations")\
+        .select("*", count="exact")\
+        .eq("user_id", reservation.user_id)\
+        .execute()
+
+    if count_response.count >= 3:
+        raise HTTPException(status_code=400, detail="Reservation limit reached")
+
     data_to_insert = reservation.dict(exclude_none=True)
-    
-    # Convert datetime to ISO string so it can be serialized to JSON
     if "starting_time" in data_to_insert:
         data_to_insert["starting_time"] = data_to_insert["starting_time"].isoformat()
-    
+
     response = supabase.table("reservations").insert(data_to_insert).execute()
     return response.data[0]
 
