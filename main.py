@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from datetime import datetime, time
 import os
 from dotenv import load_dotenv
+from datetime import datetime, time, timezone
 
 # Load environment variables
 load_dotenv()
@@ -92,10 +93,13 @@ from fastapi import FastAPI, HTTPException
 
 @app.post("/reservations", response_model=Reservation)
 def create_reservation(reservation: Reservation):
-    # Count active reservations for this user
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Count only ACTIVE (future) reservations
     count_response = supabase.table("reservations")\
         .select("*", count="exact")\
         .eq("user_id", reservation.user_id)\
+        .gte("starting_time", now)\
         .execute()
 
     if count_response.count >= 3:
