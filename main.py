@@ -68,30 +68,35 @@ def delete_user(user_id: str):
     return {"message": "User deleted"}
 
 
-# 5. Create an endpoint to fetch reservations for a specific field
+# 5. Future reservations for a specific field, earliest first
 @app.get("/fields/{field_id}/reservations", response_model=list[Reservation])
 def get_field_reservations(field_id: int):
-    now = datetime.now(timezone.utc).isoformat()
-    response = supabase.table("reservations").select("*").eq("field_id", field_id).gt("starting_time", now).execute()
+    now = datetime.now().isoformat()
+    response = supabase.table("reservations")\
+        .select("*")\
+        .eq("field_id", field_id)\
+        .gt("starting_time", now)\
+        .order("starting_time", desc=False)\
+        .execute()
     return response.data
 
 
-# 6. endpoint to fetch user reservations
+# 6. Future reservations for a user, earliest first
 @app.get("/users/{user_id}/reservations", response_model=list[Reservation])
 def get_user_reservations(user_id: str):
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now().isoformat()
     response = supabase.table("reservations")\
         .select("*, fields(field_name)")\
         .eq("user_id", user_id)\
         .gt("starting_time", now)\
+        .order("starting_time", desc=False)\
         .execute()
-    
-    # Flatten the nested field_name into the reservation object
+
     for r in response.data:
         if r.get("fields"):
             r["field_name"] = r["fields"]["field_name"]
         del r["fields"]
-    
+
     return response.data
 
 # 7. Create an endpoint to create a new reservation
