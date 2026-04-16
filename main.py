@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime, time, timezone
 from fastapi import FastAPI, HTTPException
+from zoneinfo import ZoneInfo
 
 
 # Load environment variables
@@ -68,28 +69,20 @@ def delete_user(user_id: str):
     return {"message": "User deleted"}
 
 
-# 5. Future reservations for a specific field, earliest first
-@app.get("/fields/{field_id}/reservations", response_model=list[Reservation])
-def get_field_reservations(field_id: int):
-    now = datetime.now().isoformat()
-    response = supabase.table("reservations")\
-        .select("*")\
-        .eq("field_id", field_id)\
-        .gt("starting_time", now)\
-        .order("starting_time", desc=False)\
-        .execute()
-    return response.data
+def israel_now_iso():
+    """Current time in Israel as naive ISO string — matches how reservations are stored."""
+    return datetime.now(ZoneInfo("Asia/Jerusalem")).replace(tzinfo=None).isoformat()
 
 
-# 6. Future reservations for a user, earliest first
 @app.get("/users/{user_id}/reservations", response_model=list[Reservation])
 def get_user_reservations(user_id: str):
-    now = datetime.now().isoformat()
+    now = israel_now_iso()
+
     response = supabase.table("reservations")\
         .select("*, fields(field_name)")\
         .eq("user_id", user_id)\
-        .gt("starting_time", now)\
-        .order("starting_time", desc=False)\
+        .gte("starting_time", now)\
+        .order("starting_time")\
         .execute()
 
     for r in response.data:
@@ -98,6 +91,29 @@ def get_user_reservations(user_id: str):
         del r["fields"]
 
     return response.data
+
+
+@app.post("/reservations", response_model=Reservation)
+def create_reservation(reservation: Reservation):
+    now = israel_now_iso()
+
+    count_response = supabase.table("reservations")\
+        .select("reservation_id", count="exact")\
+        .eq("user_id", reservation.user_id)\
+        .gte("starting_time", now)\
+        .execute()
+
+    print(f"Active reservations count: {count_response.count}", flush=True)
+
+    if count_response.count is not None and count_response.count >= 3:
+        raise HTTPException(status_code=400, detail="Reservation limit reached")
+
+    data_to_insert = reservation.dict(exclude_none=True)
+    if "starting_time" in data_to_insert:
+        data_to_insert["starting_time"] = data_to_insert["starting_time"].isoformat()
+
+    response = supabase.table("reservations").insert(data_to_insert).execute()
+    return response.data[0]
 
 # 7. Create an endpoint to create a new reservation
 
