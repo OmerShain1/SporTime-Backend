@@ -96,14 +96,15 @@ def get_user_reservations(user_id: str):
 def create_reservation(reservation: Reservation):
     now = datetime.now(timezone.utc).isoformat()
 
-    # Count only ACTIVE (future) reservations
     count_response = supabase.table("reservations")\
         .select("reservation_id", count="exact")\
         .eq("user_id", reservation.user_id)\
         .gte("starting_time", now)\
         .execute()
 
-    if len(count_response.data) >= 3:
+    print(f"Active reservations count: {count_response.count}")  # debug
+
+    if count_response.count is not None and count_response.count >= 3:
         raise HTTPException(status_code=400, detail="Reservation limit reached")
 
     data_to_insert = reservation.dict(exclude_none=True)
