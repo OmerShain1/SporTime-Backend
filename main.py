@@ -103,7 +103,7 @@ def create_reservation(reservation: Reservation):
         .gte("starting_time", now)\
         .execute()
 
-    if count_response.count is not None and count_response.count >= 3:
+    if len(count_response.data) >= 3:
         raise HTTPException(status_code=400, detail="Reservation limit reached")
 
     data_to_insert = reservation.dict(exclude_none=True)
@@ -117,4 +117,7 @@ def create_reservation(reservation: Reservation):
 @app.delete("/reservations/{reservation_id}")
 def delete_reservation(reservation_id: int):
     response = supabase.table("reservations").delete().eq("reservation_id", reservation_id).execute()
-    return response.data[0]
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    return {"message": "Reservation deleted", "reservation_id": reservation_id}
