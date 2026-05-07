@@ -1,11 +1,9 @@
-from fastapi import FastAPI
 from typing import Optional
 from supabase import create_client, Client
 from pydantic import BaseModel
-from datetime import datetime, time
 import os
 from dotenv import load_dotenv
-from datetime import datetime, time, timezone
+from datetime import datetime, time
 from fastapi import FastAPI, HTTPException
 from zoneinfo import ZoneInfo
 
@@ -34,19 +32,16 @@ class User(BaseModel):
     user_id: str
     email: str
 
-# 2. Connect to Supabase
+#  Connect to Supabase
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 3. Create your first endpoint (a test to see if the server works)
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the SporTime API!"}
 
-# 4. Create an endpoint to fetch your sports fields
+
+#  Create an endpoint to fetch your sports fields
 @app.get("/fields", response_model=list[Field])
 def get_fields():
     response = supabase.table("fields").select("*").execute()
@@ -59,7 +54,7 @@ def get_users():
 
 @app.post("/users", response_model=User)
 def create_user(user: User):
-    response = supabase.table("users").insert(user.dict()).execute()
+    response = supabase.table("users").insert(user.model_dump()).execute()
     return response.data[0]
 
 @app.delete("/users/{user_id}")
@@ -92,7 +87,7 @@ def get_user_reservations(user_id: str):
 
     return response.data
 
-# 5. Future reservations for a specific field, earliest first
+#  Future reservations for a specific field, earliest first
 @app.get("/fields/{field_id}/reservations", response_model=list[Reservation])
 def get_field_reservations(field_id: int):
     now = datetime.now().isoformat()
@@ -117,21 +112,20 @@ def create_reservation(reservation: Reservation):
         .gte("starting_time", now)\
         .execute()
 
-    print(f"Active reservations count: {count_response.count}", flush=True)
+   
 
     if count_response.count is not None and count_response.count >= 3:
         raise HTTPException(status_code=400, detail="Reservation limit reached")
 
-    data_to_insert = reservation.dict(exclude_none=True)
-    if "starting_time" in data_to_insert:
-        data_to_insert["starting_time"] = data_to_insert["starting_time"].isoformat()
+    data_to_insert = reservation.model_dump(exclude_none=True)
+    data_to_insert["starting_time"] = data_to_insert["starting_time"].isoformat()
 
     response = supabase.table("reservations").insert(data_to_insert).execute()
     return response.data[0]
 
 
 
-# 8. Create an endpoint to delete a reservation
+#  Create an endpoint to delete a reservation
 @app.delete("/reservations/{reservation_id}")
 def delete_reservation(reservation_id: int):
     response = supabase.table("reservations").delete().eq("reservation_id", reservation_id).execute()
