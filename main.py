@@ -115,29 +115,7 @@ def create_reservation(reservation: Reservation):
     response = supabase.table("reservations").insert(data_to_insert).execute()
     return response.data[0]
 
-# 7. Create an endpoint to create a new reservation
 
-@app.post("/reservations", response_model=Reservation)
-def create_reservation(reservation: Reservation):
-    now = datetime.now(timezone.utc).isoformat()
-
-    count_response = supabase.table("reservations")\
-        .select("reservation_id", count="exact")\
-        .eq("user_id", reservation.user_id)\
-        .gte("starting_time", now)\
-        .execute()
-
-    print(f"Active reservations count: {count_response.count}")  # debug
-
-    if count_response.count is not None and count_response.count >= 3:
-        raise HTTPException(status_code=400, detail="Reservation limit reached")
-
-    data_to_insert = reservation.dict(exclude_none=True)
-    if "starting_time" in data_to_insert:
-        data_to_insert["starting_time"] = data_to_insert["starting_time"].isoformat()
-
-    response = supabase.table("reservations").insert(data_to_insert).execute()
-    return response.data[0]
 
 # 8. Create an endpoint to delete a reservation
 @app.delete("/reservations/{reservation_id}")
