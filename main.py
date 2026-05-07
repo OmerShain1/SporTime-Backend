@@ -35,7 +35,7 @@ class User(BaseModel):
     email: str
 
 # 2. Connect to Supabase
-# You will find these two links in your Supabase Dashboard under Project Settings -> API
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -91,6 +91,20 @@ def get_user_reservations(user_id: str):
         del r["fields"]
 
     return response.data
+
+# 5. Future reservations for a specific field, earliest first
+@app.get("/fields/{field_id}/reservations", response_model=list[Reservation])
+def get_field_reservations(field_id: int):
+    now = datetime.now().isoformat()
+    response = supabase.table("reservations")\
+        .select("*")\
+        .eq("field_id", field_id)\
+        .gt("starting_time", now)\
+        .order("starting_time", desc=False)\
+        .execute()
+    return response.data
+
+
 
 
 @app.post("/reservations", response_model=Reservation)
